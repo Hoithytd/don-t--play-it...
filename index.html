@@ -1,97 +1,132 @@
-
 <!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Jump Scare</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สนใจเล่นเกมไหม?</title>
 <style>
-*{box-sizing:border-box}
-body{
-  margin:0;min-height:100vh;background:#080808;color:white;
-  font-family:sans-serif;display:flex;
-  align-items:center;justify-content:center;
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
-#home{text-align:center;padding:24px}
-h1{font-size:32px;margin-bottom:32px}
-.buttons{display:flex;justify-content:center;gap:16px}
-button{
-  border:0;border-radius:10px;padding:15px 30px;
-  color:white;font-size:20px;font-weight:bold;
+body, html {
+    width: 100%;
+    height: 100%;
+    background: #000;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
 }
-#yes{background:#168b42}
-#no{background:#c62828}
-#scareScreen{
-  display:none;position:fixed;inset:0;
-  width:100%;height:100%;background:black;
+
+/* หน้าถามคำถาม */
+#quiz-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #111;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
 }
-#scareVideo{
-  width:100%;height:100%;object-fit:contain;
+
+#quiz-overlay h1 {
+    color: #fff;
+    font-size: 2rem;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.btn-group {
+    display: flex;
+    gap: 20px;
+}
+
+.quiz-btn {
+    padding: 12px 30px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #fff;
+    background: #e50914;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.quiz-btn:hover {
+    transform: scale(1.1);
+}
+
+/* วิดีโอเต็มจอ */
+video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 </style>
 </head>
 <body>
 
-<div id="home">
-  <h1>เล่นเกมไหม</h1>
-  <div class="buttons">
-    <button id="yes">เล่น</button>
-    <button id="no">ไม่เล่น</button>
-  </div>
+<!-- หน้าต่างถามคำถามหลอกล่อ 555+ -->
+<div id="quiz-overlay">
+    <h1>สนใจเล่นเกมไหม?</h1>
+    <div class="btn-group">
+        <button class="quiz-btn" onclick="startVideo()">ไม่</button>
+        <button class="quiz-btn" onclick="startVideo()">ไม่เล่น</button>
+    </div>
 </div>
 
-<div id="scareScreen">
-  <video id="scareVideo" loop playsinline preload="auto">
-   <source src="scare.mp4" type="video/mp4">
-  </video>
-</div>
+<!-- วิดีโอ scary.mp4 -->
+<video id="v" src="scary.mp4" loop playsinline></video>
 
 <script>
-const home=document.getElementById("home");
-const screen=document.getElementById("scareScreen");
-const video=document.getElementById("scareVideo");
+function startVideo() {
+    // ซ่อนหน้าถามคำถาม
+    const overlay = document.getElementById('quiz-overlay');
+    overlay.style.display = 'none';
 
-let audioContext;
-let gainNode;
-let sourceNode;
-
-async function startScare(){
-  home.style.display="none";
-  screen.style.display="block";
-
-  try{
-    if(!audioContext){
-      const AC=window.AudioContext||window.webkitAudioContext;
-
-      if(!AC){
-        await video.play();
-        return;
-      }
-
-      audioContext=new AC();
-      gainNode=audioContext.createGain();
-      sourceNode=audioContext.createMediaElementSource(video);
-      sourceNode.connect(gainNode);
-      gainNode.connect(audioContext.destination);
+    // พยายามเข้า Fullscreen
+    const doc = document.documentElement;
+    if (doc.requestFullscreen) {
+        doc.requestFullscreen().catch(() => {});
+    } else if (doc.webkitRequestFullscreen) {
+        doc.webkitRequestFullscreen().catch(() => {});
     }
 
-    await audioContext.resume();
+    const v = document.getElementById('v');
 
-    gainNode.gain.cancelScheduledValues(audioContext.currentTime);
-    gainNode.gain.setValueAtTime(0.05,audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(
-      3,audioContext.currentTime+0.12
-    );
+    // ระบบขยายเสียงทะลุเพดานด้วย Web Audio API
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const src = ctx.createMediaElementSource(v);
+        
+        const comp = ctx.createDynamicsCompressor();
+        comp.threshold.value = -50;
+        comp.knee.value = -50;
+        comp.ratio.value = 20;
 
-    await video.play();
-  }catch(error){
-    console.error(error);
-  }
+        const gain = ctx.createGain();
+        gain.gain.value = 100.0; // เร่งความดัง 100 เท่าสะใจไปเลย 555+
+
+        src.connect(comp);
+        comp.connect(gain);
+        gain.connect(ctx.destination);
+
+        if (ctx.state === 'suspended') {
+            ctx.resume();
+        }
+    } catch(e) {
+        console.log(e);
+    }
+
+    v.volume = 1.0;
+    v.play();
 }
-
-document.getElementById("yes").addEventListener("click",startScare);
-document.getElementById("no").addEventListener("click",startScare);
 </script>
-
 </body>
 </html>
